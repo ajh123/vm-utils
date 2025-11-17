@@ -7,21 +7,20 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 
 public class JavaIOSerial implements SerialConsole {
-    private final BufferedReader br;
+    private final InputStreamReader isr;
 
     public JavaIOSerial() {
-        InputStreamReader isr = new InputStreamReader(System.in);
-        this.br = new BufferedReader(isr);
+        isr = new InputStreamReader(System.in);
     }
 
     @Override
     public boolean hasInput() throws IOException {
-        return br.ready();
+        return isr.ready();
     }
 
     @Override
     public byte dequeueInput() throws IOException {
-        return (byte) br.read();
+        return (byte) isr.read();
     }
 
     @Override

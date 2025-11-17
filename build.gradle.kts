@@ -18,6 +18,8 @@ repositories {
     }
 }
 
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
