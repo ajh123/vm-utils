@@ -2,20 +2,13 @@ package me.ajh123.vmutils.examples;
 
 import li.cil.sedna.Sedna;
 import li.cil.sedna.buildroot.Buildroot;
-import me.ajh123.vmutils.api.SerialConsole;
 import me.ajh123.vmutils.device.AWTTerminal;
 import me.ajh123.vmutils.machine.R5VirtualMachine;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class AWTDemo {
-    private static final List<Character> input = new ArrayList<>();
     private static AWTTerminal terminal;
 
     public static void main(String[] args) {
@@ -32,18 +25,9 @@ public class AWTDemo {
             }
         };
 
-        panel.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                char keyChar = e.getKeyChar();
-                input.add(keyChar);
-            }
-        });
-
         panel.setFocusable(true);
         panel.requestFocusInWindow();
         panel.setBackground(Color.BLACK);
-
 
         frame.add(panel);
         frame.setVisible(true);
@@ -56,27 +40,14 @@ public class AWTDemo {
         // Create the terminal with the panel as the target
         terminal = new AWTTerminal(rows, cols, panel, cellWidth, cellHeight, Color.WHITE, Color.BLACK);
 
+        panel.addKeyListener(terminal);
+
         Sedna.initialize();
         R5VirtualMachine vm = new R5VirtualMachine(
                 Buildroot.getFirmware(),
                 Buildroot.getLinuxImage(),
                 Buildroot.getRootFilesystem(),
-                new SerialConsole() {
-                    @Override
-                    public boolean hasInput() throws IOException {
-                        return !input.isEmpty();
-                    }
-
-                    @Override
-                    public byte dequeueInput() throws IOException {
-                        return (byte) input.remove(0).charValue();
-                    }
-
-                    @Override
-                    public void putChar(char c) {
-                        terminal.putChar(c);
-                    }
-                }
+                terminal
         );
         try {
             vm.initialize();

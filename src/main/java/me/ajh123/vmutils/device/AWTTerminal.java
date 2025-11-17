@@ -3,9 +3,10 @@ package me.ajh123.vmutils.device;
 import me.ajh123.vmutils.api.Terminal;
 
 import java.awt.*;
-import javax.swing.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 
-public class AWTTerminal extends Terminal {
+public class AWTTerminal extends Terminal implements KeyListener {
     private final Component target;   // Component to draw onto
     private final int cellWidth;
     private final int cellHeight;
@@ -49,6 +50,22 @@ public class AWTTerminal extends Terminal {
         g.drawString(String.valueOf(buffer[row][col]),
                 col * cellWidth + 2,
                 row * cellHeight + cellHeight - 2);
+    }
+
+    @Override
+    public void keyTyped(KeyEvent e) {
+        // we only need this method to make Java happy
+    }
+
+    @Override
+    public void keyPressed(KeyEvent e) {
+        char keyChar = e.getKeyChar();
+        response.add(keyChar);
+    }
+
+    @Override
+    public void keyReleased(KeyEvent e) {
+        // we only need this method to make Java happy
     }
 }
 
