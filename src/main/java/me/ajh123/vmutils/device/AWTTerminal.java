@@ -21,14 +21,14 @@ public class AWTTerminal extends Terminal implements KeyListener {
     }
 
     @Override
-    protected void refresh() {
+    public void refresh() {
         if (target != null) {
             target.repaint();
         }
     }
 
     @Override
-    protected void refreshCell(int row, int col) {
+    public void refreshCell(int row, int col) {
         if (target != null) {
             target.repaint(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
         }
@@ -36,18 +36,18 @@ public class AWTTerminal extends Terminal implements KeyListener {
 
     public void drawAll(Graphics g) {
         g.setFont(font);
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < cols; c++) {
+        for (int r = 0; r < state.rows; r++) {
+            for (int c = 0; c < state.cols; c++) {
                 drawCell(g, r, c);
             }
         }
     }
 
     private void drawCell(Graphics g, int row, int col) {
-        g.setColor(bg[row][col]);
+        g.setColor(state.bg[row][col]);
         g.fillRect(col * cellWidth, row * cellHeight, cellWidth, cellHeight);
-        g.setColor(fg[row][col]);
-        g.drawString(String.valueOf(buffer[row][col]),
+        g.setColor(state.fg[row][col]);
+        g.drawString(String.valueOf(state.buffer[row][col]),
                 col * cellWidth + 2,
                 row * cellHeight + cellHeight - 2);
     }
@@ -60,7 +60,7 @@ public class AWTTerminal extends Terminal implements KeyListener {
     @Override
     public void keyPressed(KeyEvent e) {
         char keyChar = e.getKeyChar();
-        response.add(keyChar);
+        state.response.add(keyChar);
     }
 
     @Override
