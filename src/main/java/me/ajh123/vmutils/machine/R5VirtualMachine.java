@@ -10,11 +10,16 @@ import li.cil.sedna.device.virtio.VirtIOBlockDevice;
 import li.cil.sedna.riscv.R5Board;
 import me.ajh123.vmutils.api.SerialConsole;
 import me.ajh123.vmutils.api.VirtualMachine;
+import me.ajh123.vmutils.device.DeviceRegistry;
+import me.ajh123.vmutils.device.Devices;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 public final class R5VirtualMachine extends VirtualMachine {
     private static final int DEFAULT_MEMORY_BYTES = 32 * 1024 * 1024;
@@ -24,11 +29,11 @@ public final class R5VirtualMachine extends VirtualMachine {
 
     private final R5Board board;
     private final PhysicalMemory memory;
-    private final UART16550A uart;
+    private final DeviceRegistry.DeviceType<UART16550A> uart;
     private final GoldfishRTC rtc;
     private final SerialConsole viewer;
 
-    private final VirtIOBlockDevice hdd; // created from cached rootfs bytes
+    private final DeviceRegistry.DeviceType<VirtIOBlockDevice> hdd; // created from cached rootfs bytes
 
     // lifecycle state
     private volatile boolean running = false;
@@ -48,30 +53,30 @@ public final class R5VirtualMachine extends VirtualMachine {
 
         this.board = new R5Board();
         this.memory = Memory.create(DEFAULT_MEMORY_BYTES);
-        this.uart = new UART16550A();
+        this.uart = Devices.UART_16550AD;
         this.rtc = new GoldfishRTC(SystemTimeRealTimeCounter.get());
-
-        // defer wiring and adding devices to initialize() to avoid duplicate registration
-        this.hdd = createHddFromRootfs(); // create once; stateful devices may be reused
+        this.hdd = Devices.VIRTIO_BLOCK_DEVICE;
     }
 
     @Override
     public void initialize() throws IOException {
         if (initialized) return;
 
-        // Wire interrupts and devices
-        uart.getInterrupt().set(0xA, board.getInterruptController());
-        rtc.getInterrupt().set(0xB, board.getInterruptController());
-        hdd.getInterrupt().set(0x1, board.getInterruptController());
-
         // Map devices (device-local memory offset 0 corresponds to RAM start)
         board.addDevice(0x80000000L, memory);
-        board.addDevice(uart);
+
+        // Wire interrupts and devices
+        uart.attach(new HashMap<>(), board, memory);
+
+        rtc.getInterrupt().set(0xB, board.getInterruptController());
         board.addDevice(rtc);
-        board.addDevice(hdd);
+
+        Map<String, Object> hddOptions = new HashMap<>();
+        hddOptions.put("fsBytes", this.rootfsBytes);
+        hdd.attach(hddOptions, board, memory);
+
 
         board.setBootArguments("root=/dev/vda ro");
-        board.setStandardOutputDevice(uart);
 
         board.reset();
 
@@ -131,6 +136,8 @@ public final class R5VirtualMachine extends VirtualMachine {
         final int cyclesPerMs = Math.max(1, cpuFrequency / 1000);
         long nextTick = System.nanoTime();
 
+        Optional<UART16550A> uart_port_opt = uart.getDevice();
+
         while (board.isRunning() && running && !Thread.currentThread().isInterrupted()) {
             // Run ~1 ms worth of CPU cycles, stepping in CPU_STEP_CYCLES increments
             int cyclesRemaining = cyclesPerMs;
@@ -138,21 +145,24 @@ public final class R5VirtualMachine extends VirtualMachine {
                 board.step(CPU_STEP_CYCLES);
                 cyclesRemaining -= CPU_STEP_CYCLES;
 
-                // Drain UART output
-                int value;
-                while ((value = uart.read()) != -1) {
-                    viewer.putChar((char) (value & 0xFF));
-                }
-
-                // Feed input into UART
-                try {
-                    while (viewer.hasInput() && uart.canPutByte()) {
-                        uart.putByte(viewer.dequeueInput());
+                if (uart_port_opt.isPresent()) {
+                    UART16550A uart_port = uart_port_opt.get();
+                    // Drain UART output
+                    int value;
+                    while ((value = uart_port.read()) != -1) {
+                        viewer.putChar((char) (value & 0xFF));
                     }
-                } catch (IOException ioe) {
-                    // If terminal input fails, stop the VM with a clear error
-                    stop();
-                    throw new IOException("UART input failed", ioe);
+
+                    // Feed input into UART
+                    try {
+                        while (viewer.hasInput() && uart_port.canPutByte()) {
+                            uart_port.putByte(viewer.dequeueInput());
+                        }
+                    } catch (IOException ioe) {
+                        // If terminal input fails, stop the VM with a clear error
+                        stop();
+                        throw new IOException("UART input failed", ioe);
+                    }
                 }
             }
 
@@ -182,15 +192,6 @@ public final class R5VirtualMachine extends VirtualMachine {
                 // We're behind schedule; advance nextTick now to avoid accumulating large negative sleep
                 nextTick = System.nanoTime();
             }
-        }
-    }
-
-    private VirtIOBlockDevice createHddFromRootfs() {
-        try {
-            final ByteArrayInputStream bais = new ByteArrayInputStream(rootfsBytes);
-            return new VirtIOBlockDevice(board.getMemoryMap(), ByteBufferBlockDevice.createFromStream(bais, true));
-        } catch (IOException e) {
-            throw new IllegalStateException("Failed to create rootfs block device", e);
         }
     }
 }

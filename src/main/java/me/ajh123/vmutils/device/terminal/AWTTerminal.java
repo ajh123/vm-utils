@@ -1,4 +1,4 @@
-package me.ajh123.vmutils.device;
+package me.ajh123.vmutils.device.terminal;
 
 import me.ajh123.vmutils.api.Terminal;
 

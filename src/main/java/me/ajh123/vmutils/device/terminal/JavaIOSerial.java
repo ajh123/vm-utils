@@ -1,8 +1,7 @@
-package me.ajh123.vmutils.device;
+package me.ajh123.vmutils.device.terminal;
 
 import me.ajh123.vmutils.api.SerialConsole;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 

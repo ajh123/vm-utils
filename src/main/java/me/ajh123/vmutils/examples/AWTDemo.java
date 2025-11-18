@@ -1,8 +1,8 @@
 package me.ajh123.vmutils.examples;
 
-import li.cil.sedna.Sedna;
 import li.cil.sedna.buildroot.Buildroot;
-import me.ajh123.vmutils.device.AWTTerminal;
+import me.ajh123.vmutils.Virtualisation;
+import me.ajh123.vmutils.device.terminal.AWTTerminal;
 import me.ajh123.vmutils.machine.R5VirtualMachine;
 
 import javax.swing.*;
@@ -12,6 +12,7 @@ public class AWTDemo {
     private static AWTTerminal terminal;
 
     public static void main(String[] args) {
+        Virtualisation.initialise();
         // Swing setup
         JFrame frame = new JFrame("AWTTerminal Demo");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -42,7 +43,6 @@ public class AWTDemo {
 
         panel.addKeyListener(terminal);
 
-        Sedna.initialize();
         R5VirtualMachine vm = new R5VirtualMachine(
                 Buildroot.getFirmware(),
                 Buildroot.getLinuxImage(),
